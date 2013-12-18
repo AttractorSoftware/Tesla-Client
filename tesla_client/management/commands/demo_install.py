@@ -6,6 +6,7 @@ import calendar
 from django.conf import settings
 from tesla_client.management.commands import TeslaClient
 import datetime
+import re
 
 
 class Command(BaseCommand):
@@ -24,6 +25,7 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         demo_host = settings.TESLA_DEPLOY_HOST
+        installation_commands = settings.TESLA_INSTALLATION_COMMANDS
         jenkins_url = settings.TESLA_CLIENT_URL
 
         if 'url' in options.keys() and options['url']:
@@ -42,4 +44,6 @@ class Command(BaseCommand):
                 success_revision = "Build_%d_%s_%s" % (build_info.build_number, 'success', calendar.timegm(datetime.datetime.now().utctimetuple()))
                 local('git tag -a %s -m"Successfule build %d"' % (success_revision, build_info.build_number))
                 local('git push --tags')
-                local('fab -H %s update:demo,%s --shell "/usr/local/bin/bash -l -c"' % (demo_host, success_revision))
+                for command in installation_commands:
+                    command = re.sub('%tag%', success_revision, command)
+                    local(command)
